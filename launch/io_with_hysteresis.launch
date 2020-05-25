@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+  
+  <node name="io_with_hysteresis" pkg="io_devices" type="vulcano_airpump_manager.py" output="screen">
+  </node>
+
+
+</launch>
