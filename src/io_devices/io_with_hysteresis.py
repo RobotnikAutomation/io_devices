@@ -32,14 +32,8 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import sys
-import time, threading
-
-import rospy
-import nav_msgs.msg
-import robotnik_msgs.msg
-import robotnik_msgs.srv
-import std_msgs.msg
+from robotnik_msgs.srv import set_digital_output
+from robotnik_msgs.msg import inputs_outputs
 
 from rcomponent.rcomponent import *
 
@@ -47,10 +41,10 @@ class IOWithHysteresis(RComponent):
 
     def __init__(self):
 
-        self.time_with_pressure_ok = 0
-        self.time_with_pressure_not_ok = 0
-        self.has_pressure_ok  = False
-        self.compressor_time_on = 0
+        self.time_with_signal_ok = 0
+        self.time_with_signal_not_ok = 0
+        self.has_signal_ok  = False
+        self.output_time_on = 0
         self.active_protection = False
         self.io_last_stamp = 0
         self.first_io_cb = True
@@ -67,24 +61,24 @@ class IOWithHysteresis(RComponent):
         self.io_topic = 'robotnik_modbus_io_br/input_output'
         self.io_topic = rospy.get_param('~io_topic', self.io_topic)
 
-        self.pressure_ok_time_hysteresis = 60
-        self.pressure_ok_time_hysteresis = rospy.get_param('~pressure_ok_time_hysteresis', self.pressure_ok_time_hysteresis)
+        self.signal_ok_time_hysteresis = 60
+        self.signal_ok_time_hysteresis = rospy.get_param('~signal_ok_time_hysteresis', self.signal_ok_time_hysteresis)
 
-        self.pressure_not_ok_time_hysteresis = 5
-        self.pressure_not_ok_time_hysteresis = rospy.get_param('~pressure_not_ok_time_hysteresis', self.pressure_not_ok_time_hysteresis)
+        self.signal_not_ok_time_hysteresis = 5
+        self.signal_not_ok_time_hysteresis = rospy.get_param('~signal_not_ok_time_hysteresis', self.signal_not_ok_time_hysteresis)
 
-        self.pressure_ok_input_number = 5
-        self.pressure_ok_input_number = rospy.get_param('~inputs/pressure_ok/number', self.pressure_ok_input_number)
+        self.signal_ok_input_number = 5
+        self.signal_ok_input_number = rospy.get_param('~signal_ok_input_number', self.signal_ok_input_number)
         
-        self.compressor_time_protection = 600
-        self.compressor_time_protection = rospy.get_param('~compressor_time_protection', self.compressor_time_protection)
+        self.device_max_time_active = 600
+        self.device_max_time_active = rospy.get_param('~device_max_time_active', self.device_max_time_active)
         
-        self.compressor_stop_time_protection = 60
-        self.compressor_stop_time_protection = rospy.get_param('~compressor_stop_time_protection', self.compressor_stop_time_protection)
-        self.compressor_stop_time = self.compressor_stop_time_protection
+        self.device_stop_time_protection = 60
+        self.device_stop_time_protection = rospy.get_param('~device_stop_time_protection', self.device_stop_time_protection)
+        self.device_stop_time = self.device_stop_time_protection
         
-        self.air_pump_output_number = 15
-        self.air_pump_output_number = rospy.get_param('~outputs/air_pump/number', self.air_pump_output_number)
+        self.device_output_number = 15
+        self.device_output_number = rospy.get_param('~device_output_number', self.device_output_number)
         
 
 
@@ -93,9 +87,9 @@ class IOWithHysteresis(RComponent):
 
         # wait until the service is ready, otherwise this node is useless
         rospy.wait_for_service(self.io_service)
-        self.io_srv = rospy.ServiceProxy(self.io_service, robotnik_msgs.srv.set_digital_output)
+        self.io_srv = rospy.ServiceProxy(self.io_service, set_digital_output)
 
-        self.io_sub = rospy.Subscriber(self.io_topic, robotnik_msgs.msg.inputs_outputs, self.io_cb, queue_size=1) 
+        self.io_sub = rospy.Subscriber(self.io_topic, inputs_outputs, self.io_cb, queue_size=1) 
 
 
     def setup(self):
@@ -116,27 +110,27 @@ class IOWithHysteresis(RComponent):
         self.ready_last_stamp = ready_current_stamp
 
         try:
-            if self.compressor_time_on > self.compressor_time_protection:
+            if self.output_time_on > self.device_max_time_active:
                 self.active_protection = True
-                self.compressor_stop_time = self.compressor_stop_time_protection
-                self.compressor_time_on = 0
+                self.device_stop_time = self.device_stop_time_protection
+                self.output_time_on = 0
 
-            if self.active_protection and self.compressor_stop_time < 0:
+            if self.active_protection and self.device_stop_time < 0:
                 self.active_protection = False
-                self.compressor_time_on = 0
-                self.compressor_stop_time = 0 
+                self.output_time_on = 0
+                self.device_stop_time = 0 
 
             if self.active_protection == True:
-                io_response = self.io_srv(self.air_pump_output_number, False)
-                self.compressor_stop_time -= time_elapsed
-            elif self.has_pressure_ok == True:
-                io_response = self.io_srv(self.air_pump_output_number, False)
-                self.compressor_time_on -= time_elapsed
-                if self.compressor_time_on < 0:
-                    self.compressor_time_on = 0
+                io_response = self.io_srv(self.device_output_number, False)
+                self.device_stop_time -= time_elapsed
+            elif self.has_signal_ok == True:
+                io_response = self.io_srv(self.device_output_number, False)
+                self.output_time_on -= time_elapsed
+                if self.output_time_on < 0:
+                    self.output_time_on = 0
             else:
-                io_response = self.io_srv(self.air_pump_output_number, True)
-                self.compressor_time_on += time_elapsed
+                io_response = self.io_srv(self.device_output_number, True)
+                self.output_time_on += time_elapsed
 
         except rospy.service.ServiceException as e:
             rospy.logerr('%s::readyState: ServiceException: That means that I cannot connect to the IO module '% (self.node_name))
@@ -157,29 +151,29 @@ class IOWithHysteresis(RComponent):
             self.io_last_stamp = io_current_stamp
 
         time_elapsed = (io_current_stamp - self.io_last_stamp).to_sec()
-        pressure_ok = io_msg.digital_inputs[self.pressure_ok_input_number-1]
+        signal_ok = io_msg.digital_inputs[self.signal_ok_input_number-1]
 
-        if pressure_ok == True:
+        if signal_ok == True:
             if self.first_io_cb == True:
-                self.time_with_pressure_ok = self.pressure_ok_time_hysteresis
-                self.has_pressure_ok = True
-            self.time_with_pressure_ok += time_elapsed    
-            self.time_with_pressure_not_ok -= time_elapsed
+                self.time_with_signal_ok = self.signal_ok_time_hysteresis
+                self.has_signal_ok = True
+            self.time_with_signal_ok += time_elapsed    
+            self.time_with_signal_not_ok -= time_elapsed
             #print 'pressure ok' 
         else:
-            self.time_with_pressure_not_ok += time_elapsed
-            self.time_with_pressure_ok -= time_elapsed    
+            self.time_with_signal_not_ok += time_elapsed
+            self.time_with_signal_ok -= time_elapsed    
             #print 'pressure not ok'
 
-        if self.time_with_pressure_ok > self.pressure_ok_time_hysteresis:
-            self.time_with_pressure_ok = self.pressure_ok_time_hysteresis
-            self.time_with_pressure_not_ok = 0
-            self.has_pressure_ok = True
-            #print 'has_pressure_ok'
-        elif self.time_with_pressure_not_ok > self.pressure_not_ok_time_hysteresis:
-            self.time_with_pressure_not_ok = self.pressure_not_ok_time_hysteresis
-            self.time_with_pressure_ok = 0
-            self.has_pressure_ok = False
+        if self.time_with_signal_ok > self.signal_ok_time_hysteresis:
+            self.time_with_signal_ok = self.signal_ok_time_hysteresis
+            self.time_with_signal_not_ok = 0
+            self.has_signal_ok = True
+            #print 'has_signal_ok'
+        elif self.time_with_signal_not_ok > self.signal_not_ok_time_hysteresis:
+            self.time_with_signal_not_ok = self.signal_not_ok_time_hysteresis
+            self.time_with_signal_ok = 0
+            self.has_signal_ok = False
             #print 'has_pressure_not_ok'
 
         self.io_last_stamp = io_current_stamp
