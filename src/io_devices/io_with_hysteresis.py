@@ -111,11 +111,13 @@ class IOWithHysteresis(RComponent):
 
         try:
             if self.output_time_on > self.device_max_time_active:
+                rospy.logwarn("%s::ready_state: Turn on protection!" % (self._node_name))
                 self.active_protection = True
                 self.device_stop_time = self.device_stop_time_protection
                 self.output_time_on = 0
 
             if self.active_protection and self.device_stop_time < 0:
+                rospy.logwarn("%s::ready_state: Turn off protection!" % (self._node_name))
                 self.active_protection = False
                 self.output_time_on = 0
                 self.device_stop_time = 0 
@@ -123,7 +125,12 @@ class IOWithHysteresis(RComponent):
             if self.active_protection == True:
                 io_response = self.io_srv(self.device_output_number, False)
                 self.device_stop_time -= time_elapsed
+                
+                time_stopped = self.device_stop_time_protection - self.device_stop_time
+                rospy.logwarn("%s::ready_state: Protection active" % (self._node_name, time_stopped))
+            
             elif self.has_signal_ok == True:
+                rospy.loginfo_throttle(5, "%s::ready_state: Signal ok active" % (self._node_name))
                 io_response = self.io_srv(self.device_output_number, False)
                 self.output_time_on -= time_elapsed
                 if self.output_time_on < 0:
@@ -131,6 +138,10 @@ class IOWithHysteresis(RComponent):
             else:
                 io_response = self.io_srv(self.device_output_number, True)
                 self.output_time_on += time_elapsed
+
+                rospy.logwarn_throttle(5, "%s::ready_state: Signal ok not active" % (self._node_name))
+                rospy.loginfo_throttle(1, "%s::ready_state: Device active during %f seconds" % (self._node_name, self.output_time_on))
+
 
         except rospy.service.ServiceException as e:
             rospy.logerr('%s::readyState: ServiceException: That means that I cannot connect to the IO module '% (self.node_name))
