@@ -127,7 +127,7 @@ class IOWithHysteresis(RComponent):
                 self.device_stop_time -= time_elapsed
                 
                 time_stopped = self.device_stop_time_protection - self.device_stop_time
-                rospy.logwarn("%s::ready_state: Protection active" % (self._node_name, time_stopped))
+                rospy.logwarn("%s::ready_state: Protection active during %f" % (self._node_name, time_stopped))
             
             elif self.has_signal_ok == True:
                 rospy.loginfo_throttle(5, "%s::ready_state: Signal ok active" % (self._node_name))
@@ -144,7 +144,7 @@ class IOWithHysteresis(RComponent):
 
 
         except rospy.service.ServiceException as e:
-            rospy.logerr('%s::readyState: ServiceException: That means that I cannot connect to the IO module '% (self.node_name))
+            rospy.logerr('%s::readyState: ServiceException: That means that I cannot connect to the IO module '% (self._node_name))
         except rospy.exceptions.ROSInterruptException as e: 
             rospy.logerr('%s::readyState: ROSInterruptException: exiting, do not worry')
         except:
