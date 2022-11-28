@@ -1,0 +1,25 @@
+devices:
+  - buzzer
+  - front_light
+  - left_light
+  - beacon
+
+buzzer:
+  type: simple_output_manager/SimpleOutputManager
+  namespace: robotnik_base_hw/set_digital_output
+  output_number: 4
+
+front_light:
+  type: simple_output_manager/SimpleOutputManager
+  namespace: robotnik_base_hw/set_digital_output
+  output_number: 5
+
+left_light:
+  type: simple_output_manager/SimpleOutputManager
+  namespace: robotnik_base_hw/set_digital_output
+  output_number: 6
+
+beacon:
+  type: simple_output_manager/SimpleOutputManager
+  namespace: robotnik_base_hw/set_digital_output
+  output_number: 7

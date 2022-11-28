@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+  
+  <node name="io_devices" pkg="io_devices" type="io_devices_manager_node.py" output="screen">
+    <rosparam command="load" file="$(find io_devices)/config/default.yaml" subst_value="true"/>
+  </node>
+
+
+</launch>

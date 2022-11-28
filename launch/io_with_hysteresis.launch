@@ -1,8 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-  
-  <node name="io_with_hysteresis" pkg="io_devices" type="io_with_hysteresis.py" output="screen">
-  </node>
-
-
-</launch>

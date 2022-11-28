@@ -1,30 +1,61 @@
-# IO Devices
+# io_devices
+Package to interact with different components using IOs
 
-Package to manage devices using inputs and outputs.
+## Installation
 
-## Dependencies
+* Install robotnik dependencies:
+    * robotnik_msgs
+    * rcomponent
 
-* [robotnik_msgs](https://github.com/RobotnikAutomation/robotnik_msgs)
+## Parameters
 
-* [rcomponent](https://github.com/RobotnikAutomation/rcomponent)
+* **devices**: List with the name of the different device managers to load.
 
-## io_with_hysteresis
+    ```yaml
+    devices:
+    - buzzer
+    - front_light
+    - left_light
+    - beacon
+    ```
+### Devices
 
-### Params
+For each device defined in the devices list is required to define its parameters:
+* **type**: The name of the Python module and class
+* **namespace**: Name of the server to interact with IOs
 
-* **io_service** (string): Service name to set the digital output.
-  
-* **io_topic** (string): Topic name to read the input status
+```yaml
+buzzer:
+  type: simple_output_manager/SimpleOutputManager
+  namespace: robotnik_base_hw/set_digital_output
+  output_number: 4
 
-* **signal_ok_input_number** (int): Digital input that shows if the device is ok. If not ok, the device needs to be activated using the *device_output_number*.
+front_light:
+  type: simple_output_manager/SimpleOutputManager
+  namespace: robotnik_base_hw/set_digital_output
+  output_number: 5
 
-* **signal_ok_time_hysteresis** (int): Time in seconds. The output of the device will remain active until this time has passed since the input of signal ok is active.
-  
-* **signal_not_ok_time_hysteresis** (int): Time in seconds. The output of the device will be activated when the input of signal ok has been inactive for this time
+left_light:
+  type: simple_output_manager/SimpleOutputManager
+  namespace: robotnik_base_hw/set_digital_output
+  output_number: 6
 
-* **device_max_time_active** (int): Time in seconds. If the device is active for more than this value, it will be truned off.
+beacon:
+  type: simple_output_manager/SimpleOutputManager
+  namespace: robotnik_base_hw/set_digital_output
+  output_number: 7
+```
 
-* **device_stop_time_protection** (int): Time in seconds. Minimum time that the device will still stop after a protective stop caused by *device_max_time_active*.
+## Services
 
-* **device_output_number** (int): Digital output that turn on/off the device.
-        
+For each configured device, a service server is started to interact with the device. The behavior of the service will be defined by the type of the manager.
+
+### simple_output_manager
+
+* ~/<device_name>/set_value (std_srvs/SetBool): Sets the value of the output
+
+## Launch
+
+```bash
+roslaunch io_device io_device.launch
+```
