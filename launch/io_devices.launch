@@ -1,9 +1,11 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="robot_id" value="$(optenv ROBOT_ID robot)"/>
   
-  <node name="io_devices" pkg="io_devices" type="io_devices_manager_node.py" output="screen">
-    <rosparam command="load" file="$(find io_devices)/config/default.yaml" subst_value="true"/>
-  </node>
-
+  <group ns="$(arg robot_id)">
+    <node name="io_devices" pkg="io_devices" type="io_devices_manager_node.py" output="screen">
+      <rosparam command="load" file="$(find io_devices)/config/default.yaml" subst_value="true"/>
+    </node>
+  </group>
 
 </launch>
