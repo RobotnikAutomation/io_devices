@@ -36,42 +36,61 @@
 import rospy
 from rospy.service import ServiceException
 
-from std_msgs.msg import Bool
-from std_srvs.srv import SetBoolResponse 
+from robotnik_signal_msgs.srv import SetSignal, SetSignalResponse
+from robotnik_signal_msgs.msg import SignalStatus
 
-from robotnik_msgs.srv import set_digital_outputRequest
-from robotnik_msgs.msg import inputs_outputs
+from single_output_manager import SingleOutputManager
 
-from io_manager import IOManager
-
-class SimpleOutputManager(IOManager):
+class SignalSingleOutputManager(SingleOutputManager):
     """
         Class to manage IO Device
     """
     def __init__(self, params, name, node_ns):
-        IOManager.__init__(self, params, name, node_ns)
+        SingleOutputManager.__init__(self, params, name, node_ns)
+        
+        # Signals stuff
+        self.signal_srv = rospy.Service('~' + self._name + '/set_signal', SetSignal, self._set_signal_cb)
+        self.signal_status_pub = rospy.Publisher('~' + self._name + '/status', SignalStatus, queue_size=10)
 
-        self.output = self._params['output_number']
-        self.desired_output_state = False
-        self.last_output_state = False
-        self.io_sub = rospy.Subscriber('robotnik_base_hw/io', inputs_outputs, self._io_cb)
-        self.output_state_pub = rospy.Publisher('~' + self._name + '/state', Bool, queue_size=10)
+        self.available_signals = []
+        for signal in self._params['signals']:
+            self.available_signals.append(signal['id'])
+
+        self.active_signals = []
+        self.desired_signal = ""
+
 
     def execute(self):
-        if self.desired_output_state == self.last_output_state:
-            return
+        SingleOutputManager.execute(self)
 
-        msg = "Output not in desired state, lets try to switch the output."
-        rospy.loginfo_throttle(2, "%s::%s[SimpleOutputManager]::execute: %s" % (self._node_ns, self._name, msg))
-        self._set_output()
+        if self.desired_output_state == self.last_output_state:
+            self.active_signals = [self.desired_signal]
+
         return
     
     def publish(self):
-        msg = Bool()
-        msg.data = self.last_output_state
-        self.output_state_pub.publish(msg)
+        SingleOutputManager.publish(self)
 
-    def _set_value_cb(self, request):
+        msg = SignalStatus()
+        msg.node_name = "io_devices/" + self._name
+        msg.active_signals = self.active_signals
+        self.signal_status_pub.publish(msg)
+        return
+
+    def _set_signal_cb(self, request):
+        signal = request.signal_id
+        enable = request.enable
+        
+        response = SetSignalResponse()
+        if signal not in self.available_signals:
+            msg = "Ignoring signal '" + signal + "'. Not included in target signals"
+            response.ret.success = False
+            response.ret.message = msg
+            rospy.logerr_throttle(2,"%s::%s[SignalSingleOutputManager]::_set_signal_cb: %s " \
+                % (self._node_ns, self._name, msg))
+            return response
+
+        self.des
         self.desired_output_state = request.data
         success = self._set_output()
         
@@ -79,26 +98,5 @@ class SimpleOutputManager(IOManager):
         response.success = success[0]
         response.message = success[1]
 
-        return response
-    
-    def _set_output(self):
-        io_req = set_digital_outputRequest()
-        io_req.output = self.output
-        io_req.value = self.desired_output_state
+        return 
 
-        succeeded = False
-        msg = ""
-        try:
-            self.set_output_client.call(io_req)
-            succeeded = True
-            msg = "Output " + str(self.output)+ " correctly set"
-            rospy.loginfo("%s::%s[SimpleOutputManager]::_set_output: %s " % (self._node_ns, self._name, msg))
-        except ServiceException as error:
-            rospy.logerr_throttle(2,"%s::%s[SimpleOutputManager]::_set_output: %s " % (self._node_ns, self._name, error))
-            succeeded = False
-            msg = "Error setting output " + str(self.output)
-
-        return (succeeded, msg)        
-        
-    def _io_cb(self, msg):
-        self.last_output_state = msg.digital_outputs[self.output - 1]
