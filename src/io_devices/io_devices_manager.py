@@ -64,6 +64,8 @@ class IODevicesManager(RComponent):
 
     def ready_state(self):
         """Actions performed in ready state"""
+        for device in self.device_managers.keys():
+            self.device_managers[device].execute()
         return
 
     def shutdown(self):

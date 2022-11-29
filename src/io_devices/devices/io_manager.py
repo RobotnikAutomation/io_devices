@@ -47,13 +47,15 @@ class IOManager():
         self._name = name
         self._node_ns = node_ns
 
-        self.set_value_srv = rospy.Service('~' + self._name + '/set_value', SetBool, self.set_value_cb)
+        self.set_value_srv = rospy.Service('~' + self._name + '/set_value', SetBool, self._set_value_cb)
         self.set_output_client = rospy.ServiceProxy(self._params['namespace'], set_digital_output)
 
-    def set_value_cb(self, request):
+    def execute(self):
         raise NotImplementedError("Function defined in base clase IOManager but not implemented.")
     
     def publish(self):
         raise NotImplementedError("Function defined in base clase IOManager but not implemented.")
     
-    
+    def _set_value_cb(self, request):
+        raise NotImplementedError("Function defined in base clase IOManager but not implemented.")
+        

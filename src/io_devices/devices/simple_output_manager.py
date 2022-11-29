@@ -50,45 +50,55 @@ class SimpleOutputManager(IOManager):
     """
     def __init__(self, params, name, node_ns):
         IOManager.__init__(self, params, name, node_ns)
-        self.output = self._params['output_number']
 
+        self.output = self._params['output_number']
+        self.desired_output_state = False
         self.last_output_state = False
-        self.io_sub = rospy.Subscriber('robotnik_base_hw/io', inputs_outputs, self.io_cb)
+        self.io_sub = rospy.Subscriber('robotnik_base_hw/io', inputs_outputs, self._io_cb)
         self.output_state_pub = rospy.Publisher('~' + self._name + '/state', Bool, queue_size=10)
 
+    def execute(self):
+        if self.desired_output_state == self.last_output_state:
+            return
 
-    def set_value_cb(self, request):
-        io_req = set_digital_outputRequest()
-        io_req.output = self.output
-        io_req.value = request.data
-
-        try:
-            self.set_output_client.call(io_req)    
-        except ServiceException as error:
-            response = SetBoolResponse()
-            response.message = "Error setting output"
-            response.success = False
-            rospy.logerr("%s::%s::set_value_cb: %s " % (self._node_ns, self._name, error))
-            return response
-
-
-        response = SetBoolResponse()
-        msg = ""
-        if request.data == True:
-            msg = "Output " +str(self.output)+ " set to True"
-        else:
-            msg = "Output " +str(self.output)+ " set to False"
-        
-        rospy.loginfo("%s::%s::set_value_cb: %s " % (self._node_ns, self._name, msg))
-        response.message = msg
-        response.success = True
-        return response
+        msg = "Output not in desired state, lets try to switch the output."
+        rospy.loginfo_throttle(2, "%s::%s[SimpleOutputManager]::execute: %s" % (self._node_ns, self._name, msg))
+        self._set_output()
+        return
     
-    def io_cb(self, msg):
-        self.last_output_state = msg.digital_outputs[self.output - 1]
-
-
     def publish(self):
         msg = Bool()
         msg.data = self.last_output_state
         self.output_state_pub.publish(msg)
+
+    def _set_value_cb(self, request):
+        self.desired_output_state = request.data
+        success = self._set_output()
+        
+        response = SetBoolResponse()
+        response.success = success[0]
+        response.message = success[1]
+
+        return response
+    
+    def _set_output(self):
+        io_req = set_digital_outputRequest()
+        io_req.output = self.output
+        io_req.value = self.desired_output_state
+
+        succeeded = False
+        msg = ""
+        try:
+            self.set_output_client.call(io_req)
+            succeeded = True
+            msg = "Output " + str(self.output)+ " correctly set"
+            rospy.loginfo("%s::%s[SimpleOutputManager]::_set_output: %s " % (self._node_ns, self._name, msg))
+        except ServiceException as error:
+            rospy.logerr_throttle(2,"%s::%s[SimpleOutputManager]::_set_output: %s " % (self._node_ns, self._name, error))
+            succeeded = False
+            msg = "Error setting output " + str(self.output)
+
+        return (succeeded, msg)        
+        
+    def _io_cb(self, msg):
+        self.last_output_state = msg.digital_outputs[self.output - 1]

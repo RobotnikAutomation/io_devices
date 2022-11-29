@@ -152,3 +152,6 @@ class SignalOutputManager(IOManager):
         io_req.output = self.output
         io_req.value = value
         return  io_req
+
+    def execute(self):
+        return 
