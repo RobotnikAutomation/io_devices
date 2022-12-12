@@ -20,7 +20,7 @@ left_light:
   output_number: 6
 
 beacon:
-  type: signal_output_manager/SignalOutputManager
+  type: signal_single_output_manager/SignalSingleOutputManager
   namespace: robotnik_base_hw/set_digital_output
   output_number: 7
   signals:

@@ -63,9 +63,23 @@ class SignalSingleOutputManager(SingleOutputManager):
     def execute(self):
         SingleOutputManager.execute(self)
 
-        if self.desired_output_state == self.last_output_state:
-            self.active_signals = [self.desired_signal]
+        valid_signal = self.desired_signal in self.available_signals
+        
+        
+        if valid_signal == True:
+            if len(self.active_signals) != 0:
+                self.desired_output_state = True
+            else:
+                self.active_signals = [self.desired_signal]
 
+                
+        elif self.desired_signal == "":
+            msg = "Desired output value set to false because desired signal is empty"
+            rospy.logwarn_throttle(10,"%s::%s[SignalSingleOutputManager]::execute: %s " \
+                % (self._node_ns, self._name, msg))
+
+            self.desired_output_state = False
+    
         return
     
     def publish(self):
@@ -79,24 +93,35 @@ class SignalSingleOutputManager(SingleOutputManager):
 
     def _set_signal_cb(self, request):
         signal = request.signal_id
-        enable = request.enable
+        rospy.loginfo("set_sginal %s" % signal)
         
         response = SetSignalResponse()
         if signal not in self.available_signals:
-            msg = "Ignoring signal '" + signal + "'. Not included in target signals"
+            msg = "'" + signal + "' not included in target signals. Clearing active signals"
             response.ret.success = False
             response.ret.message = msg
             rospy.logerr_throttle(2,"%s::%s[SignalSingleOutputManager]::_set_signal_cb: %s " \
                 % (self._node_ns, self._name, msg))
+            self.desired_signal = ""
             return response
 
-        self.des
-        self.desired_output_state = request.data
+        self.desired_signal = signal
+        self.desired_output_state = request.enable
         success = self._set_output()
         
-        response = SetBoolResponse()
-        response.success = success[0]
-        response.message = success[1]
+        response.ret.success = success[0]
+        response.ret.message = success[1]
+        return response
+    
+    def _set_output(self):
+        set_output = SingleOutputManager._set_output(self)
 
-        return 
+        if len(self.active_signals) != 0:
+            msg = "Input set by service but active signal will force the desired state"
+            set_output = (set_output[0], msg)
+            rospy.logwarn("%s::%s[SignalSingleOutputManager]::_set_signal_cb: %s " \
+                % (self._node_ns, self._name, msg))
+            self.active_signals = []
+        return set_output
+
 

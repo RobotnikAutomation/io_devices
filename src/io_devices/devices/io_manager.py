@@ -51,11 +51,11 @@ class IOManager():
         self.set_output_client = rospy.ServiceProxy(self._params['namespace'], set_digital_output)
 
     def execute(self):
-        raise NotImplementedError("Function defined in base clase IOManager but not implemented.")
+        raise NotImplementedError("Function 'execute' defined in base clase IOManager but not implemented.")
     
     def publish(self):
-        raise NotImplementedError("Function defined in base clase IOManager but not implemented.")
+        raise NotImplementedError("Function 'publish' defined in base clase IOManager but not implemented.")
     
     def _set_value_cb(self, request):
-        raise NotImplementedError("Function defined in base clase IOManager but not implemented.")
+        raise NotImplementedError("Function '_set_value_cb' defined in base clase IOManager but not implemented.")
         
