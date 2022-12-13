@@ -36,11 +36,12 @@
 import rospy
 from rospy.service import ServiceException
 
+from std_srvs.srv import SetBool 
+from robotnik_msgs.srv import set_digital_output
 from std_msgs.msg import Bool
 from std_srvs.srv import SetBoolResponse 
 
 from robotnik_msgs.srv import set_digital_outputRequest
-from robotnik_msgs.msg import inputs_outputs
 
 from io_manager import IOManager
 
@@ -54,8 +55,11 @@ class SingleOutputManager(IOManager):
         self.output = self._params['output_number']
         self.desired_output_state = False
         self.last_output_state = False
-        self.io_sub = rospy.Subscriber('robotnik_base_hw/io', inputs_outputs, self._io_cb)
         self.output_state_pub = rospy.Publisher('~' + self._name + '/state', Bool, queue_size=10)
+
+        self.set_value_srv = rospy.Service('~' + self._name + '/set_value', SetBool, self._set_value_cb)
+        self.set_output_client = rospy.ServiceProxy(self._params['namespace'], set_digital_output)
+
 
     def execute(self):
         if self.desired_output_state == self.last_output_state:

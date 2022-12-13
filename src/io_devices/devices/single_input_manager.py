@@ -35,27 +35,30 @@
 #!/usr/bin/env python
 import rospy
 
+from std_msgs.msg import Bool
+
 from robotnik_msgs.msg import inputs_outputs
 
-class IOManager():
+from io_manager import IOManager
+
+class SingleInputManager(IOManager):
     """
         Class to manage IO Device
     """
     def __init__(self, params, name, node_ns):
-        self._params = params
-        self._name = name
-        self._node_ns = node_ns
+        IOManager.__init__(self, params, name, node_ns)
 
-        self._last_io_msg = None
-
-        self._io_sub = rospy.Subscriber('robotnik_base_hw/io', inputs_outputs, self._io_cb)
+        self.input = self._params['input_number']
+        self.last_input_state = False
+        self.input_state_pub = rospy.Publisher('~' + self._name + '/state', Bool, queue_size=10)
 
     def execute(self):
-        raise NotImplementedError("Function 'execute' defined in base clase IOManager but not implemented.")
+        return
     
     def publish(self):
-        raise NotImplementedError("Function 'publish' defined in base clase IOManager but not implemented.")
-    
+        msg = Bool()
+        msg.data = self.last_input_state
+        self.input_state_pub.publish(msg)
         
     def _io_cb(self, msg):
-        self._last_io_msg = msg
+        self.last_input_state = msg.digital_inputs[self.input - 1]
